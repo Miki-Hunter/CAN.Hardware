@@ -6,6 +6,7 @@
 //    canhw_demo zlgfd        ZLG CAN FD 演示(需 USBCANFD-200U)
 //    canhw_demo peak         PEAK 经典 CAN 演示(需 PCAN-USB)
 //    canhw_demo peakfd       PEAK CAN FD 演示(需 FD 设备)
+//    canhw_demo peak2ch      PEAK 双通道互连演示(USBBUS1 与 USBBUS2 互连)
 // ==================================================================
 #include <canhw/Canhw.h>
 
@@ -36,11 +37,15 @@ void PrintHardwareMap() {
     std::cout << std::endl;
 }
 
-void PrintFrame(const FrameBase& frame) {
+// 多通道演示时各读线程并发回调,整帧打印需持锁避免交错
+canhw::Mutex gPrintMutex;
+
+void PrintFrame(const FrameBase& frame, const char* prefix = "") {
     const auto* canFrame = dynamic_cast<const CANFrame*>(&frame);
     if (canFrame == nullptr) return;
 
-    std::cout << (canFrame->dir == 0 ? "TX" : "RX") << " 0x" << std::hex
+    canhw::LockGuard guard(gPrintMutex);
+    std::cout << prefix << (canFrame->dir == 0 ? "TX" : "RX") << " 0x" << std::hex
               << std::uppercase << std::setw(3) << std::setfill('0') << canFrame->id
               << std::dec << " DLC=" << canFrame->dlc << " [";
     for (int i = 0; i < canFrame->dlc; ++i) {
@@ -51,6 +56,54 @@ void PrintFrame(const FrameBase& frame) {
     std::cout << std::dec << ']';
     if (canFrame->flags) std::cout << ' ' << canFrame->flags->ToString();
     std::cout << std::endl;
+}
+
+// 双通道互连演示:ch1(PCAN_USBBUS1)与 ch2(PCAN_USBBUS2)互连,
+// 各发一帧,除各自 TX 回显外还能在对端看到 RX(验证跨通道接收)
+void DemoPeakTwoChannels() {
+    auto hw1 = Factory::GetInstance(HardwareManufacturer::Peak, PeakDeviceType::Generic,
+                                    CommProtocol::CAN);
+    auto hw2 = Factory::GetInstance(HardwareManufacturer::Peak, PeakDeviceType::Generic,
+                                    CommProtocol::CAN);
+    if (!hw1 || !hw2) {
+        std::cerr << "Peak not registered\n";
+        return;
+    }
+
+    auto& cfg1 = static_cast<PeakCANConfig&>(hw1->Config());
+    cfg1.canDeviceChannel = 0x51;  // PCAN_USBBUS1
+    cfg1.canBitrate = PeakCanBitrate::pcanBAUD_500K;
+    auto& cfg2 = static_cast<PeakCANConfig&>(hw2->Config());
+    cfg2.canDeviceChannel = 0x52;  // PCAN_USBBUS2
+    cfg2.canBitrate = PeakCanBitrate::pcanBAUD_500K;
+
+    // 各通道的收发(含回显)都带通道前缀打印(前缀与帧同锁,防交错)
+    hw1->eventHandler = [](const FrameBase& frame) { PrintFrame(frame, "[ch1] "); };
+    hw2->eventHandler = [](const FrameBase& frame) { PrintFrame(frame, "[ch2] "); };
+
+    std::cout << "Opening PEAK ch1(0x51) + ch2(0x52) ..." << std::endl;
+    hw1->Open();
+    hw2->Open();
+    std::cout << "Opened. ch1 sends 0x123, ch2 sends 0x456, listen 2s ..."
+              << std::endl;
+
+    CANFrame frame1;
+    frame1.id = 0x123;
+    frame1.dlc = 8;
+    frame1.data = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};
+    hw1->Send(frame1);
+
+    CANFrame frame2;
+    frame2.id = 0x456;
+    frame2.dlc = 8;
+    frame2.data = {0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7};
+    hw2->Send(frame2);
+
+    canhw::SleepMs(2000);
+
+    hw1->Close();
+    hw2->Close();
+    std::cout << "Closed." << std::endl;
 }
 
 // 三步走:取实例 → 配参数 → 订阅/收发(与 .NET 版用法一致)
@@ -143,7 +196,7 @@ int main(int argc, char** argv) {
     PrintHardwareMap();
 
     if (argc < 2) {
-        std::cout << "Usage: canhw_demo [zlg|zlgfd|peak|peakfd]\n"
+        std::cout << "Usage: canhw_demo [zlg|zlgfd|peak|peakfd|peak2ch]\n"
                      "  (收发演示需要对应硬件与厂商驱动;\n"
                      "   驱动 DLL 位于 HwDependency/ 下,请在包含该目录的位置运行,\n"
                      "   或把 HwDependency 放到可执行文件同目录)\n";
@@ -151,7 +204,10 @@ int main(int argc, char** argv) {
     }
 
     try {
-        RunDemo(argv[1]);
+        if (std::string(argv[1]) == "peak2ch")
+            DemoPeakTwoChannels();
+        else
+            RunDemo(argv[1]);
     } catch (const std::exception& ex) {
         std::cerr << "Error: " << ex.what() << std::endl;
         return 1;
