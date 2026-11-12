@@ -8,7 +8,7 @@
 #include <atomic>
 #include <cstdint>
 #include <map>
-#include <mutex>
+#include <canhw/Sync.h>
 #include <string>
 #include <utility>
 
@@ -84,7 +84,7 @@ private:
     std::atomic<bool> loaded_{false};
 
     // (deviceType, deviceIndex) -> 引用计数
-    std::mutex deviceLock_;
+    canhw::Mutex deviceLock_;
     std::map<std::pair<uint32_t, uint32_t>, int> deviceRefCounts_;
 
     using OpenDeviceFn = uint32_t (*)(uint32_t, uint32_t, uint32_t);

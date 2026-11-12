@@ -10,7 +10,7 @@
 // ==================================================================
 #include <atomic>
 #include <cstdint>
-#include <mutex>
+#include <canhw/Sync.h>
 #include <string>
 
 #include <canhw/IntrepidConfig.h>
@@ -200,7 +200,7 @@ private:
 
     DynamicLibrary lib_;
     std::atomic<bool> loaded_{false};
-    std::mutex loadLock_;
+    canhw::Mutex loadLock_;
 
     using FindDevicesFn = int32_t CANHW_IC_STDCALL (*)(NeoDeviceEx*, int32_t*, uint32_t,
                                                        uint32_t, OptionsNeoEx*, uint32_t);

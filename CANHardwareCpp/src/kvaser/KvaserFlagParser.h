@@ -51,7 +51,7 @@ class KvaserCanFlagParser {
 public:
     static std::shared_ptr<const CanFrameFlags> Parse(uint32_t rawFlag) {
         using namespace KvaserMessageFlags;
-        const bool has = [&](uint32_t f) { return (rawFlag & f) == f; };
+        const auto has = [&](uint32_t f) { return (rawFlag & f) == f; };
 
         auto f = std::make_shared<CanFrameFlags>();
         f->rawFlags = rawFlag;

@@ -13,7 +13,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
-#include <thread>
+#include <canhw/Sync.h>
 
 using namespace canhw;
 
@@ -128,7 +128,7 @@ void RunDemo(const std::string& which) {
     // frame.dlc = 64; frame.fdf = true; frame.brs = true;
     // frame.data.resize(64); for (size_t i = 0; i < 64; ++i) frame.data[i] = (uint8_t)i;
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    canhw::SleepMs(2000);
 
     hardware->Close();
     std::cout << "Closed." << std::endl;

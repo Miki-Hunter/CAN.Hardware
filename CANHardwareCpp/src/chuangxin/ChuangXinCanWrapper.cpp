@@ -16,7 +16,7 @@ namespace chuangxin {
 using namespace std::chrono_literals;
 
 bool ChuangXinCanWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     const uint32_t deviceType = static_cast<uint32_t>(config_.deviceModel);
@@ -67,7 +67,7 @@ bool ChuangXinCanWrapper::Open() {
         rxBuf_ = std::move(tempRxBuf);
         isOpen_ = true;
         stop_ = false;
-        readThread_ = std::thread(&ChuangXinCanWrapper::ReadTaskProc, this);
+        readThread_.Start(&ChuangXinCanWrapper::ReadTaskProc, this);
         return true;
     } catch (const std::exception& ex) {
         // 回滚已打开的资源
@@ -88,15 +88,15 @@ bool ChuangXinCanWrapper::Open() {
 
 bool ChuangXinCanWrapper::Close() {
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_) return true;
         stop_ = true;
     }
 
     // 在锁外部等待读线程退出,避免死锁
-    if (readThread_.joinable()) readThread_.join();
+    readThread_.Join();
 
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     auto& api = ChuangXinCanApi::Instance();
     if (isOpen_) {
         try {
@@ -114,14 +114,14 @@ bool ChuangXinCanWrapper::Close() {
 }
 
 void ChuangXinCanWrapper::FlushReceiveBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_)
         ChuangXinCanApi::Instance().ClearBuffer(openedDeviceType_, openedDeviceIndex_,
                                                 openedChannel_);
 }
 
 void ChuangXinCanWrapper::FlushTransmitBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_)
         ChuangXinCanApi::Instance().ClearBuffer(openedDeviceType_, openedDeviceIndex_,
                                                 openedChannel_);
@@ -136,15 +136,15 @@ void ChuangXinCanWrapper::ReadTaskProc() {
                 res = Read();
             } while (res && !stop_);
 
-            if (!stop_) std::this_thread::sleep_for(5ms);
+            if (!stop_) canhw::SleepMs(5);
         } catch (...) {
-            if (!stop_) std::this_thread::sleep_for(10ms);
+            if (!stop_) canhw::SleepMs(10);
         }
     }
 }
 
 bool ChuangXinCanWrapper::Read() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || rxBuf_.empty()) return false;
 
     auto& api = ChuangXinCanApi::Instance();
@@ -185,7 +185,7 @@ bool ChuangXinCanWrapper::Read() {
 }
 
 bool ChuangXinCanWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);

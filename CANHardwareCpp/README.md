@@ -68,6 +68,7 @@ CANHardwareCpp/
 │   ├── Factory.h           工厂(静态注册表,替代反射)
 │   ├── CanFrameHelper.h    SocketCAN 风格 ID 解析
 │   ├── DataLenConverter.h  DLC ⇄ 长度换算与校验
+│   ├── Sync.h              线程兼容层(无线程模型的 MinGW→Win32 临界区/线程,其余→std)
 │   └── XxxConfig.h ×12     各厂商配置结构体 + 厂商专属枚举
 ├── src/
 │   ├── Frame.cpp / Factory.cpp / RegisterBuiltin.cpp / DynamicLibrary.*
@@ -90,11 +91,32 @@ CANHardwareCpp/
 
 ## 四、构建与运行
 
+### 方式 A:CMake(有 cmake 的环境)
+
 ```bash
 cd CANHardwareCpp
 cmake -B build -A x64        # MSVC;MinGW 用 -G "MinGW Makefiles"
 cmake --build build --config Release
 ```
+
+### 方式 B:g++ 直接编译(本机 MinGW 无 cmake 时,已验证全绿)
+
+```bash
+cd CANHardwareCpp
+mkdir -p build_gcc
+for f in $(find src demo -name '*.cpp'); do
+  g++ -std=c++17 -Iinclude -Isrc -c "$f" -o "build_gcc/$(echo $f | tr '/' '_').o" || echo "FAIL: $f"
+done
+g++ build_gcc/*.o -o build_gcc/canhw_demo.exe -ladvapi32
+./build_gcc/canhw_demo.exe     # 应列出全部 12 家硬件清单
+```
+
+> **工具链说明**:本机 `C:\mingw64`(gcc8)是 win32 线程模型,libstdc++ **没有
+> `std::mutex/std::thread`**——参考工程 QC2015P_Cpp_Plus 同样因此改用 Win32 API
+> (见其 `main_final.cpp` 注释)。本工程通过 [include/canhw/Sync.h](include/canhw/Sync.h)
+> 兼容:该工具链下自动退化为 `CRITICAL_SECTION`/`CreateThread`,MSVC 与
+> posix 线程 MinGW 下仍走标准库,上层代码统一使用
+> `Mutex / LockGuard / Thread(Start/Join) / SleepMs`。
 
 运行(随工程携带的驱动位于 .NET 工程 `CAN.Hardware/HwDependency/` 下,二选一):
 
@@ -175,7 +197,10 @@ int main() {
 3. **同星 Tosun 的事件回调按通道号路由**(回调不带设备上下文):同设备同通道的
    后注册者覆盖先注册者,与 .NET 中第二次 `tscan_register_event_can` 的行为一致;
 4. **ETAS 回调以 `userData=this` 定位实例**,实例销毁前先 `Close` 使在途回调失效;
-5. `Close()` 统一用 `join()` 等待读线程退出(比 .NET 的 `Wait(1000)` 超时更严格,
+5. `Close()` 统一用 `Thread::Join()` 等待读线程退出(比 .NET 的 `Wait(1000)` 超时更严格,
    各家读循环均在 ≤200ms 内可退出);
-6. 仅 Windows 完成设计验证(`DynamicLibrary` 预留 POSIX `dlopen` 分支;
-   ETAS 注册表定位为 Windows 专属,其他裸名加载可跨平台)。
+6. **线程原语经 `Sync.h` 兼容层**:本机 MinGW(无线程模型)下底层是 Win32
+   临界区/`CreateThread`(与 QC2015P_Cpp_Plus 惯例一致),MSVC / posix MinGW 下
+   是标准库;业务代码统一用 `Mutex / LockGuard / Thread / SleepMs`;
+7. 仅 Windows 完成设计验证(`DynamicLibrary` 预留 POSIX `dlopen` 分支;
+   ETAS 注册表定位与 `Sync.h` 的 Win32 分支为 Windows 专属,其他裸名加载可跨平台)。

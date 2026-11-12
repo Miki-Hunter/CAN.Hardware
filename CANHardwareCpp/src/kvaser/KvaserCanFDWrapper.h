@@ -4,8 +4,8 @@
 //  注册键:Kvaser + Generic + CANFD
 // ==================================================================
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <canhw/Sync.h>
+#include <canhw/Sync.h>
 
 #include <canhw/IHardware.h>
 #include <canhw/KvaserConfig.h>
@@ -38,9 +38,9 @@ private:
 
     int32_t handle_ = -1;
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> stop_{false};
-    std::thread readThread_;
+    canhw::Thread readThread_;
     bool isOpen_ = false;
 };
 

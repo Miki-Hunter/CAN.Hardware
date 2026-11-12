@@ -60,7 +60,7 @@ VectorApi& VectorApi::Instance() {
 bool VectorApi::Load() {
     if (loaded_) return true;
 
-    std::lock_guard<std::mutex> lock(initLock_);
+    canhw::LockGuard lock(initLock_);
     if (loaded_) return true;
 
     if (!lib_.Load(DefaultDllPath())) return false;
@@ -126,7 +126,7 @@ void VectorApi::EnsureLoaded() {
 
 int16_t VectorApi::OpenDriver() {
     EnsureLoaded();
-    std::lock_guard<std::mutex> lock(initLock_);
+    canhw::LockGuard lock(initLock_);
     int16_t status = SUCCESS;
     if (refCount_ == 0) status = pOpenDriver_();
     if (status == SUCCESS) ++refCount_;
@@ -135,7 +135,7 @@ int16_t VectorApi::OpenDriver() {
 
 void VectorApi::CloseDriver() {
     if (!loaded_) return;
-    std::lock_guard<std::mutex> lock(initLock_);
+    canhw::LockGuard lock(initLock_);
     if (refCount_ <= 0) return;
     --refCount_;
     if (refCount_ == 0) pCloseDriver_();

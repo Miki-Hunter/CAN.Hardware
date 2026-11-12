@@ -10,6 +10,9 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#ifndef NOMINMAX
+#define NOMINMAX  // 防止 windows.h 的 min/max 宏污染 std::min/std::max
+#endif
 #include <windows.h>
 #endif
 
@@ -132,7 +135,7 @@ EtasBoaApi& EtasBoaApi::Instance() {
 
 void EtasBoaApi::EnsureLoaded() {
     if (loaded_) return;
-    std::lock_guard<std::mutex> lock(loadLock_);
+    canhw::LockGuard lock(loadLock_);
     if (loaded_) return;
 
     const std::string dir = ResolveBoaDirectory();
@@ -248,7 +251,8 @@ std::vector<std::string> EtasBoaApi::EnumerateNodes(const std::string& protocol)
     EtasCsiTree* treeHandle = nullptr;
     const EtasNodeRange range{NODE_TYPE_MIN_PHYSICAL_NODE,
                               NODE_TYPE_MAX_PHYSICAL_NODE};
-    const EtasErrorCode status = pCreateTree_("", &range, &treeHandle);
+    // 原生 CSI_CreateProtocolTree 第二参数按值传递(EtasNodeRange 8 字节)
+    const EtasErrorCode status = pCreateTree_("", range, &treeHandle);
     if (status != CODE_SUCCESS || treeHandle == nullptr)
         throw std::runtime_error("创建 CSI 协议树失败(" + StatusText(status) + ")");
 

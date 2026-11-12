@@ -16,7 +16,7 @@ namespace chuangxin {
 using namespace std::chrono_literals;
 
 bool ChuangXinCanFdWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     const uint32_t deviceType = static_cast<uint32_t>(config_.deviceModel);
@@ -139,7 +139,7 @@ bool ChuangXinCanFdWrapper::Open() {
         rxFdBuf_ = std::move(tempRxFdBuf);
         isOpen_ = true;
         stop_ = false;
-        readThread_ = std::thread(&ChuangXinCanFdWrapper::ReadTaskProc, this);
+        readThread_.Start(&ChuangXinCanFdWrapper::ReadTaskProc, this);
         return true;
     } catch (const std::exception& ex) {
         // 回滚已打开的资源
@@ -167,15 +167,15 @@ bool ChuangXinCanFdWrapper::Open() {
 
 bool ChuangXinCanFdWrapper::Close() {
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_) return true;
         stop_ = true;
     }
 
     // 在锁外部等待读线程退出,避免死锁
-    if (readThread_.joinable()) readThread_.join();
+    readThread_.Join();
 
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     auto& api = ChuangXinCanFdApi::Instance();
     if (isOpen_) {
         try {
@@ -195,12 +195,12 @@ bool ChuangXinCanFdWrapper::Close() {
 }
 
 void ChuangXinCanFdWrapper::FlushReceiveBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) ChuangXinCanFdApi::Instance().ClearBuffer(openedChannelHandle_);
 }
 
 void ChuangXinCanFdWrapper::FlushTransmitBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) ChuangXinCanFdApi::Instance().ClearBuffer(openedChannelHandle_);
 }
 
@@ -213,15 +213,15 @@ void ChuangXinCanFdWrapper::ReadTaskProc() {
                 res = Read();
             } while (res && !stop_);
 
-            if (!stop_) std::this_thread::sleep_for(5ms);
+            if (!stop_) canhw::SleepMs(5);
         } catch (...) {
-            if (!stop_) std::this_thread::sleep_for(10ms);
+            if (!stop_) canhw::SleepMs(10);
         }
     }
 }
 
 bool ChuangXinCanFdWrapper::Read() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_) return false;
 
     auto& api = ChuangXinCanFdApi::Instance();
@@ -296,7 +296,7 @@ std::shared_ptr<CANFrame> ChuangXinCanFdWrapper::ParseFdFrame(
 }
 
 bool ChuangXinCanFdWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || openedChannelHandle_ == nullptr) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);

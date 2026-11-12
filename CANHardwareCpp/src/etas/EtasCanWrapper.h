@@ -5,7 +5,7 @@
 //  注册键:Etas + Generic + CAN
 // ==================================================================
 #include <atomic>
-#include <mutex>
+#include <canhw/Sync.h>
 
 #include <canhw/EtasConfig.h>
 #include <canhw/IHardware.h>
@@ -53,7 +53,7 @@ private:
     // 硬件定时器频率(tick/秒),Open 时查询;0 表示查询失败,时间戳保持 0
     uint32_t tickFrequency_ = 0;
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     // 会被驱动回调线程读取,需原子
     std::atomic<bool> isOpen_{false};
 };

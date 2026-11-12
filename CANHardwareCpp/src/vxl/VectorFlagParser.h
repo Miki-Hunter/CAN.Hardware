@@ -19,7 +19,7 @@ public:
     /// 经典 CAN(XLevent.msgFlags + 原始 ID)
     static std::shared_ptr<const CanFrameFlags> Parse(uint32_t msgFlags,
                                                       uint32_t rawId) {
-        const bool has = [&](uint16_t f) { return (msgFlags & f) != 0; };
+        const auto has = [&](uint16_t f) { return (msgFlags & f) != 0; };
         const bool isExt = (rawId & XL_CAN_EXT_MSG_ID) != 0;
 
         auto f = std::make_shared<CanFrameFlags>();

@@ -5,8 +5,8 @@
 //  注册键:Intrepid + Generic + CANFD
 // ==================================================================
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <canhw/Sync.h>
+#include <canhw/Sync.h>
 #include <vector>
 
 #include <canhw/IntrepidConfig.h>
@@ -44,9 +44,9 @@ private:
     static constexpr uint32_t RxWaitTimeoutMs = 200;
     std::vector<SpyMessage> rxMessages_;
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> stop_{false};
-    std::thread readThread_;
+    canhw::Thread readThread_;
     bool isOpen_ = false;
 };
 

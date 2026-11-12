@@ -5,7 +5,7 @@
 //  注册键:Etas + Generic + CANFD
 // ==================================================================
 #include <atomic>
-#include <mutex>
+#include <canhw/Sync.h>
 
 #include <canhw/EtasConfig.h>
 #include <canhw/IHardware.h>
@@ -48,7 +48,7 @@ private:
 
     uint32_t tickFrequency_ = 0;
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> isOpen_{false};
 };
 

@@ -17,7 +17,7 @@ namespace zlg {
 using namespace std::chrono_literals;
 
 bool ZlgCanFdWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     void* tempDevHandle = nullptr;
@@ -152,7 +152,7 @@ bool ZlgCanFdWrapper::Open() {
         rxFdBuf_ = std::move(tempRxFdBuf);
         isOpen_ = true;
         stop_ = false;
-        readThread_ = std::thread(&ZlgCanFdWrapper::ReadTaskProc, this);
+        readThread_.Start(&ZlgCanFdWrapper::ReadTaskProc, this);
         return true;
     } catch (const std::exception& ex) {
         // 回滚已打开的资源
@@ -179,15 +179,15 @@ bool ZlgCanFdWrapper::Open() {
 
 bool ZlgCanFdWrapper::Close() {
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_) return true;
         stop_ = true;
     }
 
     // 在锁外部等待读线程退出,避免死锁
-    if (readThread_.joinable()) readThread_.join();
+    readThread_.Join();
 
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     auto& api = ZlgApi::Instance();
 
     if (channelHandle_ != nullptr) {
@@ -216,12 +216,12 @@ bool ZlgCanFdWrapper::Close() {
 }
 
 void ZlgCanFdWrapper::FlushReceiveBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (channelHandle_ != nullptr) ZlgApi::Instance().ClearBuffer(channelHandle_);
 }
 
 void ZlgCanFdWrapper::FlushTransmitBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (channelHandle_ != nullptr) ZlgApi::Instance().ClearBuffer(channelHandle_);
 }
 
@@ -234,15 +234,15 @@ void ZlgCanFdWrapper::ReadTaskProc() {
                 res = Read();
             } while (res && !stop_);
 
-            if (!stop_) std::this_thread::sleep_for(5ms);
+            if (!stop_) canhw::SleepMs(5);
         } catch (...) {
-            if (!stop_) std::this_thread::sleep_for(10ms);
+            if (!stop_) canhw::SleepMs(10);
         }
     }
 }
 
 bool ZlgCanFdWrapper::Read() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || channelHandle_ == nullptr) return false;
 
     auto& api = ZlgApi::Instance();
@@ -305,7 +305,7 @@ std::shared_ptr<CANFrame> ZlgCanFdWrapper::ParseCanFrame(const ReceiveData& rec)
 }
 
 bool ZlgCanFdWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || channelHandle_ == nullptr) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);

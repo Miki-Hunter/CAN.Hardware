@@ -13,7 +13,7 @@ KvaserApi& KvaserApi::Instance() {
 bool KvaserApi::Load() {
     if (loaded_) return true;
 
-    std::lock_guard<std::mutex> lock(initLock_);
+    canhw::LockGuard lock(initLock_);
     if (loaded_) return true;
 
     if (!lib_.Load(DefaultDllPath())) return false;
@@ -67,7 +67,7 @@ void KvaserApi::EnsureLoaded() {
 
 void KvaserApi::InitializeLibrary() {
     EnsureLoaded();
-    std::lock_guard<std::mutex> lock(initLock_);
+    canhw::LockGuard lock(initLock_);
     // 与 .NET 一致:每次 Open 都调用 canInitializeLibrary 并引用计数 +1
     pInitializeLibrary_();
     ++refCount_;
@@ -75,7 +75,7 @@ void KvaserApi::InitializeLibrary() {
 
 void KvaserApi::UnloadLibrary() {
     if (!loaded_) return;
-    std::lock_guard<std::mutex> lock(initLock_);
+    canhw::LockGuard lock(initLock_);
     if (refCount_ > 0) {
         --refCount_;
         if (refCount_ == 0) pUnloadLibrary_();

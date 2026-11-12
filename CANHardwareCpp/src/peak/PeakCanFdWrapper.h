@@ -4,9 +4,9 @@
 //  注册键:Peak + Generic + CANFD
 // ==================================================================
 #include <atomic>
-#include <mutex>
+#include <canhw/Sync.h>
 #include <string>
-#include <thread>
+#include <canhw/Sync.h>
 
 #include <canhw/IHardware.h>
 #include <canhw/PeakConfig.h>
@@ -42,9 +42,9 @@ private:
 
     uint16_t handle_ = PCAN_NONEBUS;
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> stop_{false};
-    std::thread readThread_;
+    canhw::Thread readThread_;
     bool isOpen_ = false;
 };
 

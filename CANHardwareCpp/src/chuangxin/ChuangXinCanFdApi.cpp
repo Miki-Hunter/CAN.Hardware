@@ -15,7 +15,7 @@ ChuangXinCanFdApi& ChuangXinCanFdApi::Instance() {
 bool ChuangXinCanFdApi::Load() {
     if (loaded_) return true;
 
-    std::lock_guard<std::mutex> lock(deviceLock_);
+    canhw::LockGuard lock(deviceLock_);
     if (loaded_) return true;
 
     if (!lib_.Load(DefaultDllPath())) return false;
@@ -72,7 +72,7 @@ void ChuangXinCanFdApi::EnsureLoaded() {
 
 void* ChuangXinCanFdApi::OpenDevice(uint32_t deviceType, uint32_t deviceIndex) {
     EnsureLoaded();
-    std::lock_guard<std::mutex> lock(deviceLock_);
+    canhw::LockGuard lock(deviceLock_);
     const auto key = std::make_pair(deviceType, deviceIndex);
     auto it = devices_.find(key);
     if (it != devices_.end()) {
@@ -87,7 +87,7 @@ void* ChuangXinCanFdApi::OpenDevice(uint32_t deviceType, uint32_t deviceIndex) {
 
 void ChuangXinCanFdApi::CloseDevice(uint32_t deviceType, uint32_t deviceIndex) {
     if (!loaded_) return;
-    std::lock_guard<std::mutex> lock(deviceLock_);
+    canhw::LockGuard lock(deviceLock_);
     const auto key = std::make_pair(deviceType, deviceIndex);
     auto it = devices_.find(key);
     if (it == devices_.end()) return;

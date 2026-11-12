@@ -17,7 +17,7 @@ namespace zlg {
 using namespace std::chrono_literals;
 
 bool ZlgUsbCanWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     void* tempDevHandle = nullptr;
@@ -113,7 +113,7 @@ bool ZlgUsbCanWrapper::Open() {
         rxBuf_ = std::move(tempRxBuf);
         isOpen_ = true;
         stop_ = false;
-        readThread_ = std::thread(&ZlgUsbCanWrapper::ReadTaskProc, this);
+        readThread_.Start(&ZlgUsbCanWrapper::ReadTaskProc, this);
         return true;
     } catch (const std::exception& ex) {
         // 回滚已打开的资源
@@ -139,16 +139,16 @@ bool ZlgUsbCanWrapper::Open() {
 
 bool ZlgUsbCanWrapper::Close() {
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_) return true;
         // 先置停止标志
         stop_ = true;
     }
 
     // 在锁外部等待读线程退出,避免死锁
-    if (readThread_.joinable()) readThread_.join();
+    readThread_.Join();
 
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     auto& api = ZlgApi::Instance();
 
     // 关闭硬件
@@ -178,12 +178,12 @@ bool ZlgUsbCanWrapper::Close() {
 }
 
 void ZlgUsbCanWrapper::FlushReceiveBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (channelHandle_ != nullptr) ZlgApi::Instance().ClearBuffer(channelHandle_);
 }
 
 void ZlgUsbCanWrapper::FlushTransmitBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (channelHandle_ != nullptr) ZlgApi::Instance().ClearBuffer(channelHandle_);
 }
 
@@ -197,16 +197,16 @@ void ZlgUsbCanWrapper::ReadTaskProc() {
                 res = Read();
             } while (res && !stop_);
 
-            if (!stop_) std::this_thread::sleep_for(5ms);
+            if (!stop_) canhw::SleepMs(5);
         } catch (...) {
             // 出错稍等后继续
-            if (!stop_) std::this_thread::sleep_for(10ms);
+            if (!stop_) canhw::SleepMs(10);
         }
     }
 }
 
 bool ZlgUsbCanWrapper::Read() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || channelHandle_ == nullptr || rxBuf_.empty()) return false;
 
     auto& api = ZlgApi::Instance();
@@ -237,7 +237,7 @@ bool ZlgUsbCanWrapper::Read() {
 }
 
 bool ZlgUsbCanWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || channelHandle_ == nullptr) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);

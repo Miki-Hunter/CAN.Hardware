@@ -4,6 +4,9 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#ifndef NOMINMAX
+#define NOMINMAX  // 防止 windows.h 的 min/max 宏污染 std::min/std::max
+#endif
 #include <windows.h>
 #else
 #include <dlfcn.h>

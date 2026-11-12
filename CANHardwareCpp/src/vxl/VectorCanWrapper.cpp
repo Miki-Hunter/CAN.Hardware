@@ -26,7 +26,7 @@ bool VectorCanWrapper::IsPlausibleTiming(const XLcanBusParamsInfo& p) {
 }
 
 bool VectorCanWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     auto& api = VectorApi::Instance();
@@ -170,7 +170,7 @@ bool VectorCanWrapper::Open() {
         tempPort = -1;
         isOpen_ = true;
         stop_ = false;
-        readThread_ = std::thread(&VectorCanWrapper::ReadTaskProc, this);
+        readThread_.Start(&VectorCanWrapper::ReadTaskProc, this);
         return true;
     } catch (const std::exception& ex) {
         // 清理已打开的资源: deactivate -> closePort -> CloseDriver
@@ -190,14 +190,14 @@ bool VectorCanWrapper::Open() {
 
 bool VectorCanWrapper::Close() {
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_) return true;
         stop_ = true;
     }
 
-    if (readThread_.joinable()) readThread_.join();
+    readThread_.Join();
 
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     auto& api = VectorApi::Instance();
     if (portHandle_ >= 0) {
         try {
@@ -213,12 +213,12 @@ bool VectorCanWrapper::Close() {
 }
 
 void VectorCanWrapper::FlushReceiveBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (portHandle_ >= 0) VectorApi::Instance().FlushReceiveQueue(portHandle_);
 }
 
 void VectorCanWrapper::FlushTransmitBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (portHandle_ >= 0)
         VectorApi::Instance().CanFlushTransmitQueue(portHandle_, accessMask_);
 }
@@ -232,15 +232,15 @@ void VectorCanWrapper::ReadTaskProc() {
                 res = Read();
             } while (res && !stop_);
 
-            if (!stop_) std::this_thread::sleep_for(5ms);
+            if (!stop_) canhw::SleepMs(5);
         } catch (...) {
-            if (!stop_) std::this_thread::sleep_for(10ms);
+            if (!stop_) canhw::SleepMs(10);
         }
     }
 }
 
 bool VectorCanWrapper::Read() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || portHandle_ < 0) return false;
 
     auto& api = VectorApi::Instance();
@@ -300,7 +300,7 @@ bool VectorCanWrapper::Read() {
 }
 
 bool VectorCanWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || portHandle_ < 0) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);

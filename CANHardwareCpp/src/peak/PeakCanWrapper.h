@@ -4,8 +4,8 @@
 //  注册键:Peak + Generic + CAN
 // ==================================================================
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <canhw/Sync.h>
+#include <canhw/Sync.h>
 
 #include <canhw/IHardware.h>
 #include <canhw/PeakConfig.h>
@@ -39,9 +39,9 @@ private:
     // PEAK 通道句柄(TPCANHandle),PCAN_NONEBUS(0) 表示未打开
     uint16_t handle_ = PCAN_NONEBUS;
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> stop_{false};
-    std::thread readThread_;
+    canhw::Thread readThread_;
     bool isOpen_ = false;
 };
 

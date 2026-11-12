@@ -7,8 +7,8 @@
 //  注册键:EbEl + Generic + CAN
 // ==================================================================
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <canhw/Sync.h>
+#include <canhw/Sync.h>
 
 #include <canhw/EbElConfig.h>
 #include <canhw/IHardware.h>
@@ -58,9 +58,9 @@ private:
     // 接收轮询空闲间隔(ms):fcbReceive 为"尝试取"语义,无报文时小睡避免空转
     static constexpr int RxPollIdleMs = 5;
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> stop_{false};
-    std::thread readThread_;
+    canhw::Thread readThread_;
     bool isOpen_ = false;
 };
 

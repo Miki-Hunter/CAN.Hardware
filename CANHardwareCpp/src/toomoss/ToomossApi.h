@@ -8,7 +8,7 @@
 #include <atomic>
 #include <cstdint>
 #include <map>
-#include <mutex>
+#include <canhw/Sync.h>
 #include <string>
 #include <vector>
 
@@ -169,7 +169,7 @@ private:
     // USB_ScanDevice 一次最多扫描的设备数量
     static constexpr size_t MaxDevices = 64;
 
-    std::mutex deviceLock_;
+    canhw::Mutex deviceLock_;
     std::vector<int32_t> scannedHandles_;
     std::map<int32_t, int> refCounts_;
 

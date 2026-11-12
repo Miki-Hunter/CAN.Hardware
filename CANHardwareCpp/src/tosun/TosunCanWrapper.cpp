@@ -13,7 +13,7 @@ namespace canhw {
 namespace tosun {
 
 bool ToSunCanWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     auto& api = TosunApi::Instance();
@@ -79,7 +79,7 @@ bool ToSunCanWrapper::Open() {
 }
 
 bool ToSunCanWrapper::Close() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_) return true;
     isOpen_ = false;
 
@@ -105,7 +105,7 @@ bool ToSunCanWrapper::Close() {
 }
 
 void ToSunCanWrapper::FlushReceiveBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (handle_ != nullptr)
         TosunApi::Instance().ClearCanReceiveBuffers(handle_, config_.channelIndex);
 }
@@ -144,7 +144,7 @@ void ToSunCanWrapper::OnCanEvent(const TLibCan& canData) {
 }
 
 bool ToSunCanWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || handle_ == nullptr) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);

@@ -7,7 +7,7 @@
 #include <atomic>
 #include <cstdint>
 #include <map>
-#include <mutex>
+#include <canhw/Sync.h>
 #include <string>
 #include <utility>
 
@@ -149,7 +149,7 @@ private:
         void* handle;
         int refCount;
     };
-    std::mutex deviceLock_;
+    canhw::Mutex deviceLock_;
     std::map<std::pair<uint32_t, uint32_t>, DeviceEntry> devices_;
 
     using OpenDeviceFn = void* (*)(uint32_t, uint32_t, uint32_t);

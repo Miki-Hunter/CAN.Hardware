@@ -19,7 +19,7 @@ public:
     static std::shared_ptr<const CanFrameFlags> Parse(uint32_t msgType) {
         auto f = std::make_shared<CanFrameFlags>();
 
-        const bool has = [&](uint8_t flag) { return (msgType & flag) == flag; };
+        const auto has = [&](uint8_t flag) { return (msgType & flag) == flag; };
         const bool isExt = has(PCAN_MESSAGE_EXTENDED);
 
         f->rawFlags = msgType;

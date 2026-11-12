@@ -13,7 +13,7 @@ ZlgApi& ZlgApi::Instance() {
 bool ZlgApi::Load() {
     if (loaded_) return true;
 
-    std::lock_guard<std::mutex> lock(deviceLock_);
+    canhw::LockGuard lock(deviceLock_);
     if (loaded_) return true;
 
     if (!lib_.Load(DefaultDllPath())) return false;
@@ -52,7 +52,7 @@ void ZlgApi::EnsureLoaded() {
 
 void* ZlgApi::OpenDevice(uint32_t deviceType, uint32_t deviceIndex, uint32_t reserved) {
     EnsureLoaded();
-    std::lock_guard<std::mutex> lock(deviceLock_);
+    canhw::LockGuard lock(deviceLock_);
     if (sharedDeviceHandle_ != nullptr) {
         // 已打开的共享设备:引用计数 +1,直接复用句柄
         ++deviceRefCount_;
@@ -68,7 +68,7 @@ void* ZlgApi::OpenDevice(uint32_t deviceType, uint32_t deviceIndex, uint32_t res
 
 void ZlgApi::CloseDevice() {
     if (!loaded_) return;
-    std::lock_guard<std::mutex> lock(deviceLock_);
+    canhw::LockGuard lock(deviceLock_);
     if (deviceRefCount_ > 0) {
         --deviceRefCount_;
         if (deviceRefCount_ == 0 && sharedDeviceHandle_ != nullptr) {

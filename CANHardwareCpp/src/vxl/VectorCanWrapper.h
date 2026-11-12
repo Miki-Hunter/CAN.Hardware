@@ -5,8 +5,8 @@
 //  注册键:Vector + Generic + CAN
 // ==================================================================
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <canhw/Sync.h>
+#include <canhw/Sync.h>
 
 #include <canhw/IHardware.h>
 #include <canhw/VectorConfig.h>
@@ -44,9 +44,9 @@ private:
     int32_t portHandle_ = -1;
     uint64_t accessMask_ = 0;
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> stop_{false};
-    std::thread readThread_;
+    canhw::Thread readThread_;
     bool isOpen_ = false;
 };
 

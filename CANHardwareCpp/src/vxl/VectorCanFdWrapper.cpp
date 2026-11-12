@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstring>
 #include <stdexcept>
 
 #include <canhw/CanFrameHelper.h>
@@ -39,7 +40,7 @@ void VectorCanFdWrapper::ValidateFdTiming(const char* segment, uint32_t bitrate,
 }
 
 bool VectorCanFdWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     auto& api = VectorApi::Instance();
@@ -149,7 +150,7 @@ bool VectorCanFdWrapper::Open() {
         tempPort = -1;
         isOpen_ = true;
         stop_ = false;
-        readThread_ = std::thread(&VectorCanFdWrapper::ReadTaskProc, this);
+        readThread_.Start(&VectorCanFdWrapper::ReadTaskProc, this);
         return true;
     } catch (const std::exception& ex) {
         if (tempPort >= 0) {
@@ -168,14 +169,14 @@ bool VectorCanFdWrapper::Open() {
 
 bool VectorCanFdWrapper::Close() {
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_) return true;
         stop_ = true;
     }
 
-    if (readThread_.joinable()) readThread_.join();
+    readThread_.Join();
 
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     auto& api = VectorApi::Instance();
     if (portHandle_ >= 0) {
         try {
@@ -191,12 +192,12 @@ bool VectorCanFdWrapper::Close() {
 }
 
 void VectorCanFdWrapper::FlushReceiveBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (portHandle_ >= 0) VectorApi::Instance().FlushReceiveQueue(portHandle_);
 }
 
 void VectorCanFdWrapper::FlushTransmitBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (portHandle_ >= 0)
         VectorApi::Instance().CanFlushTransmitQueue(portHandle_, accessMask_);
 }
@@ -210,15 +211,15 @@ void VectorCanFdWrapper::ReadTaskProc() {
                 res = Read();
             } while (res && !stop_);
 
-            if (!stop_) std::this_thread::sleep_for(5ms);
+            if (!stop_) canhw::SleepMs(5);
         } catch (...) {
-            if (!stop_) std::this_thread::sleep_for(10ms);
+            if (!stop_) canhw::SleepMs(10);
         }
     }
 }
 
 bool VectorCanFdWrapper::Read() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || portHandle_ < 0) return false;
 
     auto& api = VectorApi::Instance();
@@ -273,7 +274,7 @@ bool VectorCanFdWrapper::Read() {
 }
 
 bool VectorCanFdWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || portHandle_ < 0) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);

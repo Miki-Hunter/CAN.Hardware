@@ -13,7 +13,7 @@ ToomossApi& ToomossApi::Instance() {
 bool ToomossApi::Load() {
     if (loaded_) return true;
 
-    std::lock_guard<std::mutex> lock(deviceLock_);
+    canhw::LockGuard lock(deviceLock_);
     if (loaded_) return true;
 
     if (!lib_.Load(DefaultDllPath())) return false;
@@ -71,7 +71,7 @@ void ToomossApi::EnsureLoaded() {
 
 bool ToomossApi::OpenDevice(uint32_t deviceIndex, int32_t& devHandle) {
     EnsureLoaded();
-    std::lock_guard<std::mutex> lock(deviceLock_);
+    canhw::LockGuard lock(deviceLock_);
 
     // 没有已打开设备时重新扫描,便于设备热插拔后重新连接
     if (refCounts_.empty()) {
@@ -114,7 +114,7 @@ bool ToomossApi::OpenDevice(uint32_t deviceIndex, int32_t& devHandle) {
 
 void ToomossApi::CloseDevice(int32_t devHandle) {
     if (!loaded_) return;
-    std::lock_guard<std::mutex> lock(deviceLock_);
+    canhw::LockGuard lock(deviceLock_);
 
     auto it = refCounts_.find(devHandle);
     if (it == refCounts_.end()) return;

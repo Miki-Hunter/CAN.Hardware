@@ -45,7 +45,7 @@ CanFilterConfig ToomossCanWrapper::BuildFilter() const {
 }
 
 bool ToomossCanWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     int32_t devHandle = 0;
@@ -101,7 +101,7 @@ bool ToomossCanWrapper::Open() {
         rxBuf_ = std::move(tempRxBuf);
         isOpen_ = true;
         stop_ = false;
-        readThread_ = std::thread(&ToomossCanWrapper::ReadTaskProc, this);
+        readThread_.Start(&ToomossCanWrapper::ReadTaskProc, this);
         return true;
     } catch (const std::exception& ex) {
         // 回滚已打开的资源
@@ -128,14 +128,14 @@ bool ToomossCanWrapper::Open() {
 
 bool ToomossCanWrapper::Close() {
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_) return true;
         stop_ = true;
     }
 
-    if (readThread_.joinable()) readThread_.join();
+    readThread_.Join();
 
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) {
         auto& api = ToomossApi::Instance();
         try {
@@ -157,7 +157,7 @@ bool ToomossCanWrapper::Close() {
 }
 
 void ToomossCanWrapper::FlushReceiveBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) ToomossApi::Instance().CanClearMsg(openedDevHandle_, openedChannel_);
 }
 
@@ -174,15 +174,15 @@ void ToomossCanWrapper::ReadTaskProc() {
                 res = Read();
             } while (res && !stop_);
 
-            if (!stop_) std::this_thread::sleep_for(5ms);
+            if (!stop_) canhw::SleepMs(5);
         } catch (...) {
-            if (!stop_) std::this_thread::sleep_for(10ms);
+            if (!stop_) canhw::SleepMs(10);
         }
     }
 }
 
 bool ToomossCanWrapper::Read() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || rxBuf_.empty()) return false;
 
     auto& api = ToomossApi::Instance();
@@ -229,7 +229,7 @@ bool ToomossCanWrapper::Read() {
 }
 
 bool ToomossCanWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);

@@ -8,7 +8,7 @@
 // ==================================================================
 #include <atomic>
 #include <cstdint>
-#include <mutex>
+#include <canhw/Sync.h>
 #include <string>
 
 #include <canhw/EsdConfig.h>
@@ -142,7 +142,7 @@ private:
 
     DynamicLibrary lib_;
     std::atomic<bool> loaded_{false};
-    std::mutex loadLock_;
+    canhw::Mutex loadLock_;
 
     using OpenFn = EsdCanResult (*)(int32_t, uint32_t, int32_t, int32_t, int32_t,
                                     int32_t, void**);

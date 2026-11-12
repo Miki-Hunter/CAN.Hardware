@@ -16,7 +16,7 @@ namespace intrepid {
 using namespace std::chrono_literals;
 
 bool IntrepidCanWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     void* tempHandle = nullptr;
@@ -48,7 +48,7 @@ bool IntrepidCanWrapper::Open() {
         handle_ = tempHandle;
         isOpen_ = true;
         stop_ = false;
-        readThread_ = std::thread(&IntrepidCanWrapper::ReadTaskProc, this);
+        readThread_.Start(&IntrepidCanWrapper::ReadTaskProc, this);
         return true;
     } catch (const std::exception& ex) {
         // 清理已打开的资源
@@ -68,15 +68,15 @@ bool IntrepidCanWrapper::Open() {
 
 bool IntrepidCanWrapper::Close() {
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_) return true;
         stop_ = true;
     }
 
     // 在锁外部等待读线程退出(驱动级等待最长 200ms),避免死锁
-    if (readThread_.joinable()) readThread_.join();
+    readThread_.Join();
 
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (handle_ != nullptr) {
         try {
             int32_t errors = 0;
@@ -91,7 +91,7 @@ bool IntrepidCanWrapper::Close() {
 }
 
 void IntrepidCanWrapper::FlushReceiveBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     // neoVI 无专用清空函数,循环取空驱动接收队列即可
     if (handle_ == nullptr || rxMessages_.empty()) return;
     auto& api = IntrepidApi::Instance();
@@ -160,13 +160,13 @@ void IntrepidCanWrapper::ReadTaskProc() {
             }
         } catch (...) {
             // 其他异常,稍等后继续
-            if (!stop_) std::this_thread::sleep_for(10ms);
+            if (!stop_) canhw::SleepMs(10);
         }
     }
 }
 
 bool IntrepidCanWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || handle_ == nullptr) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);

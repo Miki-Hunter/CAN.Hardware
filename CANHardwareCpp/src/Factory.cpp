@@ -1,6 +1,6 @@
 #include <canhw/Factory.h>
 
-#include <mutex>
+#include <canhw/Sync.h>
 #include <utility>
 
 namespace canhw {
@@ -27,8 +27,8 @@ std::map<HardwareKey, Factory::Creator>& Registry() {
     return registry;
 }
 
-std::mutex& RegistryMutex() {
-    static std::mutex m;
+canhw::Mutex& RegistryMutex() {
+    static canhw::Mutex m;
     return m;
 }
 
@@ -89,21 +89,21 @@ void Factory::ValidateEquipmentType(HardwareManufacturer manufacturer,
 
 void Factory::RegisterRaw(HardwareManufacturer manufacturer, int equipmentType,
                           CommProtocol protocol, Creator creator) {
-    std::lock_guard<std::mutex> lock(RegistryMutex());
+    canhw::LockGuard lock(RegistryMutex());
     Registry()[HardwareKey{manufacturer, equipmentType, protocol}] = std::move(creator);
 }
 
 std::unique_ptr<IHardware> Factory::GetInstanceRaw(HardwareManufacturer manufacturer,
                                                    int equipmentType,
                                                    CommProtocol protocol) {
-    std::lock_guard<std::mutex> lock(RegistryMutex());
+    canhw::LockGuard lock(RegistryMutex());
     auto it = Registry().find(HardwareKey{manufacturer, equipmentType, protocol});
     if (it == Registry().end() || !it->second) return nullptr;
     return it->second();
 }
 
 Factory::HardwareMap Factory::GetHardwareMap() {
-    std::lock_guard<std::mutex> lock(RegistryMutex());
+    canhw::LockGuard lock(RegistryMutex());
     HardwareMap map;
     for (const auto& entry : Registry()) {
         map[entry.first.manufacturer][entry.first.equipmentType].insert(

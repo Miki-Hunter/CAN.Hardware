@@ -6,8 +6,8 @@
 //  注册键:Toomoss + Generic + CANFD
 // ==================================================================
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <canhw/Sync.h>
+#include <canhw/Sync.h>
 #include <vector>
 
 #include <canhw/IHardware.h>
@@ -49,9 +49,9 @@ private:
     std::vector<CanFdMsg> rxBuf_;
     CanFdMsg txBuf_{};
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> stop_{false};
-    std::thread readThread_;
+    canhw::Thread readThread_;
     bool isOpen_ = false;
 };
 

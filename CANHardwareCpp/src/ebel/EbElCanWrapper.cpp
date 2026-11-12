@@ -60,7 +60,7 @@ int64_t EbElCanWrapper::BuildManagedId(uint32_t fcId, uint8_t flagsAndDlc) {
 }
 
 bool EbElCanWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     void* tempHandle = nullptr;
@@ -105,7 +105,7 @@ bool EbElCanWrapper::Open() {
         handle_ = tempHandle;
         isOpen_ = true;
         stop_ = false;
-        readThread_ = std::thread(&EbElCanWrapper::ReadTaskProc, this);
+        readThread_.Start(&EbElCanWrapper::ReadTaskProc, this);
         return true;
     } catch (const std::exception& ex) {
         // 清理已打开的资源
@@ -123,15 +123,15 @@ bool EbElCanWrapper::Open() {
 
 bool EbElCanWrapper::Close() {
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_) return true;
         stop_ = true;
     }
 
     // 在锁外部等待读线程退出,避免死锁
-    if (readThread_.joinable()) readThread_.join();
+    readThread_.Join();
 
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     auto& api = EbElApi::Instance();
     // 先停监控再关句柄
     if (handle_ != nullptr) {
@@ -150,7 +150,7 @@ bool EbElCanWrapper::Close() {
 }
 
 void EbElCanWrapper::FlushReceiveBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     // fcbase 无专用清空函数,循环取空驱动接收队列即可(取到即弃)
     if (handle_ == nullptr) return;
     auto& api = EbElApi::Instance();
@@ -175,11 +175,11 @@ void EbElCanWrapper::ReadTaskProc() {
 
             if (!ReceiveChain(handle)) {
                 // 无报文,小睡避免空转
-                std::this_thread::sleep_for(RxPollIdleMs * 1ms);
+                canhw::SleepMs(RxPollIdleMs);
             }
         } catch (...) {
             // 其他异常,稍等后继续
-            if (!stop_) std::this_thread::sleep_for(10ms);
+            if (!stop_) canhw::SleepMs(10);
         }
     }
 }
@@ -233,7 +233,7 @@ void EbElCanWrapper::ProcessCanPacket(const FcCanPacket& canPacket) {
 }
 
 bool EbElCanWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || handle_ == nullptr) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);

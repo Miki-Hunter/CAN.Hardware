@@ -4,8 +4,8 @@
 //  注册键:Zlg + USBCAN + CAN
 // ==================================================================
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <canhw/Sync.h>
+#include <canhw/Sync.h>
 #include <vector>
 
 #include <canhw/IHardware.h>
@@ -47,11 +47,11 @@ private:
     TransmitData txBuf_{};
 
     // 单一锁保护所有状态和硬件操作(对应 .NET 的 object _lock)
-    std::mutex lock_;
+    canhw::Mutex lock_;
 
     // 后台读线程控制(对应 .NET Task + CancellationTokenSource)
     std::atomic<bool> stop_{false};
-    std::thread readThread_;
+    canhw::Thread readThread_;
     bool isOpen_ = false;
 };
 

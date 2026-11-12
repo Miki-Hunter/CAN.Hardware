@@ -5,7 +5,7 @@
 // ==================================================================
 #include <atomic>
 #include <cstdint>
-#include <mutex>
+#include <canhw/Sync.h>
 #include <string>
 
 #include <canhw/KvaserConfig.h>
@@ -112,7 +112,7 @@ private:
     DynamicLibrary lib_;
     std::atomic<bool> loaded_{false};
 
-    std::mutex initLock_;
+    canhw::Mutex initLock_;
     int32_t refCount_ = 0;
 
     using InitializeLibraryFn = void (*)();

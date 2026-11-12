@@ -15,7 +15,7 @@ EsdApi& EsdApi::Instance() {
 
 void EsdApi::EnsureLoaded() {
     if (loaded_) return;
-    std::lock_guard<std::mutex> lock(loadLock_);
+    canhw::LockGuard lock(loadLock_);
     if (loaded_) return;
 
     // 按系统搜索路径加载(与 .NET 一致:ntcan64.dll)

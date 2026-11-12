@@ -5,7 +5,7 @@
 //  注册键:Tosun + Generic + CANFD
 // ==================================================================
 #include <atomic>
-#include <mutex>
+#include <canhw/Sync.h>
 
 #include <canhw/IHardware.h>
 #include <canhw/TosunConfig.h>
@@ -37,7 +37,7 @@ private:
 
     void* handle_ = nullptr;
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> isOpen_{false};
 };
 

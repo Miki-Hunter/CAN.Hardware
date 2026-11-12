@@ -6,8 +6,8 @@
 //  注册键:ChuangXin + USBCAN + CAN
 // ==================================================================
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <canhw/Sync.h>
+#include <canhw/Sync.h>
 #include <vector>
 
 #include <canhw/ChuangXinConfig.h>
@@ -48,9 +48,9 @@ private:
     static constexpr size_t RxBatchSize = 100;  // 单次最多读取的帧数
     std::vector<VciCanObj> rxBuf_;
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> stop_{false};
-    std::thread readThread_;
+    canhw::Thread readThread_;
     bool isOpen_ = false;
 };
 

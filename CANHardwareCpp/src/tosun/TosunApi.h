@@ -7,7 +7,7 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
-#include <mutex>
+#include <canhw/Sync.h>
 #include <string>
 
 #include <canhw/TosunConfig.h>
@@ -132,11 +132,11 @@ private:
     std::atomic<bool> loaded_{false};
 
     // 库级引用计数(initialize_lib_tscan / finalize_lib_tscan)
-    std::mutex initLock_;
+    canhw::Mutex initLock_;
     int32_t libRefCount_ = 0;
 
     // 设备级共享句柄引用计数
-    std::mutex deviceLock_;
+    canhw::Mutex deviceLock_;
     void* sharedDeviceHandle_ = nullptr;
     int32_t deviceRefCount_ = 0;
 

@@ -5,7 +5,7 @@
 //  注册键:Tosun + Generic + CAN
 // ==================================================================
 #include <atomic>
-#include <mutex>
+#include <canhw/Sync.h>
 
 #include <canhw/IHardware.h>
 #include <canhw/TosunConfig.h>
@@ -39,7 +39,7 @@ private:
     // 同星设备句柄,nullptr 表示未打开
     void* handle_ = nullptr;
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     // 事件回调线程读取,需原子
     std::atomic<bool> isOpen_{false};
 };

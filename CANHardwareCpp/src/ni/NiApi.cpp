@@ -15,7 +15,7 @@ NiApi& NiApi::Instance() {
 
 void NiApi::EnsureLoaded() {
     if (loaded_) return;
-    std::lock_guard<std::mutex> lock(loadLock_);
+    canhw::LockGuard lock(loadLock_);
     if (loaded_) return;
 
     // 裸 DLL 名,由系统搜索路径解析(与 .NET 一致)

@@ -7,8 +7,8 @@
 //  注册键:ChuangXin + USBCANFD + CANFD 与 ChuangXin + USBCANFD + CAN
 // ==================================================================
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <canhw/Sync.h>
+#include <canhw/Sync.h>
 #include <vector>
 
 #include <canhw/ChuangXinConfig.h>
@@ -60,9 +60,9 @@ private:
     ZcanTransmitData txCanBuf_{};
     ZcanTransmitFdData txFdBuf_{};
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> stop_{false};
-    std::thread readThread_;
+    canhw::Thread readThread_;
     bool isOpen_ = false;
 };
 

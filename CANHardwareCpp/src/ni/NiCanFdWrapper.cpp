@@ -16,7 +16,7 @@ namespace ni {
 using namespace std::chrono_literals;
 
 bool NiCanFdWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     uint32_t inSession = 0, outSession = 0;
@@ -29,14 +29,14 @@ bool NiCanFdWrapper::Open() {
             NX_MODE_FRAME_IN_STREAM, &inSession);
         if (status != NX_SUCCESS)
             throw std::runtime_error("Create input session failed(" +
-                                     NiApi::GetStatusString(status) + ")");
+                                     NiApi::Instance().GetStatusString(status) + ")");
 
         status = api.CreateSession(DB_CAN_FD_BRS, "", "",
                                    config_.interfaceName.c_str(),
                                    NX_MODE_FRAME_OUT_STREAM, &outSession);
         if (status != NX_SUCCESS)
             throw std::runtime_error("Create output session failed(" +
-                                     NiApi::GetStatusString(status) + ")");
+                                     NiApi::Instance().GetStatusString(status) + ")");
 
         // 两个会话共享同一物理接口,仲裁段/数据段波特率均需分别设置;
         // 数据段与仲裁段字段布局不同,需分别打包
@@ -76,31 +76,31 @@ bool NiCanFdWrapper::Open() {
                                    &baudrate);
         if (status != NX_SUCCESS)
             throw std::runtime_error("Set input session baudrate failed(" +
-                                     NiApi::GetStatusString(status) + ")");
+                                     NiApi::Instance().GetStatusString(status) + ")");
         status = api.SetProperty64(inSession,
                                    NX_PROP_SESSION_INTF_CAN_FD_BAUD_RATE64, 8,
                                    &fdBaudrate);
         if (status != NX_SUCCESS)
             throw std::runtime_error("Set input session FD baudrate failed(" +
-                                     NiApi::GetStatusString(status) + ")");
+                                     NiApi::Instance().GetStatusString(status) + ")");
         status = api.SetProperty64(outSession, NX_PROP_SESSION_INTF_BAUD_RATE64, 8,
                                    &baudrate);
         if (status != NX_SUCCESS)
             throw std::runtime_error("Set output session baudrate failed(" +
-                                     NiApi::GetStatusString(status) + ")");
+                                     NiApi::Instance().GetStatusString(status) + ")");
         status = api.SetProperty64(outSession,
                                    NX_PROP_SESSION_INTF_CAN_FD_BAUD_RATE64, 8,
                                    &fdBaudrate);
         if (status != NX_SUCCESS)
             throw std::runtime_error("Set output session FD baudrate failed(" +
-                                     NiApi::GetStatusString(status) + ")");
+                                     NiApi::Instance().GetStatusString(status) + ")");
 
         // 会话默认 AutoStart,首次读写时自动启动接口
         inputSession_ = inSession;
         outputSession_ = outSession;
         isOpen_ = true;
         stop_ = false;
-        readThread_ = std::thread(&NiCanFdWrapper::ReadTaskProc, this);
+        readThread_.Start(&NiCanFdWrapper::ReadTaskProc, this);
         return true;
     } catch (const std::exception& ex) {
         if (inSession != 0) {
@@ -124,14 +124,14 @@ bool NiCanFdWrapper::Open() {
 
 bool NiCanFdWrapper::Close() {
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_) return true;
         stop_ = true;
     }
 
-    if (readThread_.joinable()) readThread_.join();
+    readThread_.Join();
 
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     auto& api = NiApi::Instance();
     if (inputSession_ != 0) {
         try {
@@ -152,12 +152,12 @@ bool NiCanFdWrapper::Close() {
 }
 
 void NiCanFdWrapper::FlushReceiveBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (inputSession_ != 0) NiApi::Instance().Flush(inputSession_);
 }
 
 void NiCanFdWrapper::FlushTransmitBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (outputSession_ != 0) NiApi::Instance().Flush(outputSession_);
 }
 
@@ -178,7 +178,7 @@ void NiCanFdWrapper::ReadTaskProc() {
 
             ParseFrames(buffer, bytesRead);
         } catch (...) {
-            if (!stop_) std::this_thread::sleep_for(10ms);
+            if (!stop_) canhw::SleepMs(10);
         }
     }
 }
@@ -231,7 +231,7 @@ void NiCanFdWrapper::ParseFrames(const std::vector<uint8_t>& buffer,
 }
 
 bool NiCanFdWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || outputSession_ == 0) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);

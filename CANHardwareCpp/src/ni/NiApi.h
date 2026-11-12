@@ -9,7 +9,7 @@
 // ==================================================================
 #include <atomic>
 #include <cstdint>
-#include <mutex>
+#include <canhw/Sync.h>
 #include <string>
 #include <vector>
 
@@ -93,8 +93,8 @@ public:
     /// 按 nxFrame_t 内存布局手工打包一帧
     static std::vector<uint8_t> BuildFrameBytes(uint32_t identifier, uint8_t frameType,
                                                 const uint8_t* data, int payloadLength);
-    /// nxStatus 码转可读错误描述
-    static std::string GetStatusString(int32_t status);
+    /// nxStatus 码转可读错误描述(非 static:内部需访问已加载的 nxStatusToString)
+    std::string GetStatusString(int32_t status);
 
     static const char* DefaultDllPath() { return "nixnet.dll"; }
 
@@ -103,7 +103,7 @@ private:
 
     DynamicLibrary lib_;
     std::atomic<bool> loaded_{false};
-    std::mutex loadLock_;
+    canhw::Mutex loadLock_;
 
     using CreateSessionFn = int32_t (*)(const char*, const char*, const char*,
                                         const char*, uint32_t, uint32_t*);

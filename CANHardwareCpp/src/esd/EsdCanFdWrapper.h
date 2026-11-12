@@ -6,8 +6,8 @@
 //  注册键:Esd + Generic + CANFD
 // ==================================================================
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <canhw/Sync.h>
+#include <canhw/Sync.h>
 
 #include <canhw/EsdConfig.h>
 #include <canhw/IHardware.h>
@@ -41,10 +41,10 @@ private:
 
     std::atomic<void*> handle_{nullptr};
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> stop_{false};
     std::atomic<bool> isOpen_{false};
-    std::thread readThread_;
+    canhw::Thread readThread_;
 
     static constexpr int32_t RX_TIMEOUT_MS = 200;
 };

@@ -5,7 +5,7 @@
 // ==================================================================
 #include <atomic>
 #include <cstdint>
-#include <mutex>
+#include <canhw/Sync.h>
 #include <string>
 
 #include <canhw/Enums.h>
@@ -124,7 +124,7 @@ private:
     DynamicLibrary lib_;
     std::atomic<bool> loaded_{false};
 
-    std::mutex deviceLock_;
+    canhw::Mutex deviceLock_;
     void* sharedDeviceHandle_ = nullptr;
     int deviceRefCount_ = 0;
 

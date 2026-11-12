@@ -10,7 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
-#include <mutex>
+#include <canhw/Sync.h>
 #include <string>
 
 #include <canhw/VectorConfig.h>
@@ -97,6 +97,10 @@ constexpr uint32_t TE = 0x4000;
 } // namespace FdRxFlags
 
 // ---------------- 原生结构(pack=1) ----------------
+
+// 以下 XL 原生结构与 .NET 版一致全部 Pack=1(vxlapi.h / python-can 布局),
+// 不加 pack 时 u16/u64 字段对齐偏移会与驱动不符
+#pragma pack(push, 1)
 
 /// 经典 CAN 自定义波特率参数(XLchipParams)
 struct XLchipParams {
@@ -229,6 +233,8 @@ struct XLdriverConfig {
     XLchannelConfig channel[64];
 };
 
+#pragma pack(pop)  // XLcanBusParamsInfo 含 std::string,不得在 pack=1 区域内
+
 /// 经典 CAN 总线参数读回结果(诊断/校验用)
 struct XLcanBusParamsInfo {
     std::string channelName;
@@ -314,7 +320,7 @@ private:
     DynamicLibrary lib_;
     std::atomic<bool> loaded_{false};
 
-    std::mutex initLock_;
+    canhw::Mutex initLock_;
     int32_t refCount_ = 0;
 
     using XlStatusFn = int16_t (*)();

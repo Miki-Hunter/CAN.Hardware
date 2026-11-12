@@ -16,7 +16,7 @@ namespace peak {
 using namespace std::chrono_literals;
 
 bool PeakCanWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     auto& api = PeakApi::Instance();
@@ -46,7 +46,7 @@ bool PeakCanWrapper::Open() {
         handle_ = config_.canDeviceChannel;
         isOpen_ = true;
         stop_ = false;
-        readThread_ = std::thread(&PeakCanWrapper::ReadTaskProc, this);
+        readThread_.Start(&PeakCanWrapper::ReadTaskProc, this);
         return true;
     } catch (const std::exception& ex) {
         // 回滚已打开的资源
@@ -62,15 +62,15 @@ bool PeakCanWrapper::Open() {
 
 bool PeakCanWrapper::Close() {
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_) return true;
         stop_ = true;
     }
 
     // 在锁外部等待读线程退出,避免死锁
-    if (readThread_.joinable()) readThread_.join();
+    readThread_.Join();
 
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (handle_ != PCAN_NONEBUS) {
         try {
             PeakApi::Instance().Uninitialize(handle_);
@@ -83,12 +83,12 @@ bool PeakCanWrapper::Close() {
 }
 
 void PeakCanWrapper::FlushReceiveBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (handle_ != PCAN_NONEBUS) PeakApi::Instance().Reset(handle_);
 }
 
 void PeakCanWrapper::FlushTransmitBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (handle_ != PCAN_NONEBUS) PeakApi::Instance().Reset(handle_);
 }
 
@@ -101,15 +101,15 @@ void PeakCanWrapper::ReadTaskProc() {
                 res = Read();
             } while (res && !stop_);
 
-            if (!stop_) std::this_thread::sleep_for(5ms);
+            if (!stop_) canhw::SleepMs(5);
         } catch (...) {
-            if (!stop_) std::this_thread::sleep_for(10ms);
+            if (!stop_) canhw::SleepMs(10);
         }
     }
 }
 
 bool PeakCanWrapper::Read() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || handle_ == PCAN_NONEBUS) return false;
 
     auto& api = PeakApi::Instance();
@@ -145,7 +145,7 @@ bool PeakCanWrapper::Read() {
 }
 
 bool PeakCanWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || handle_ == PCAN_NONEBUS) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);

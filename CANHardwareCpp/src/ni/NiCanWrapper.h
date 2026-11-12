@@ -5,8 +5,8 @@
 //  注册键:Ni + Generic + CAN
 // ==================================================================
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <canhw/Sync.h>
+#include <canhw/Sync.h>
 #include <vector>
 
 #include <canhw/IHardware.h>
@@ -43,9 +43,9 @@ private:
     uint32_t inputSession_ = 0;
     uint32_t outputSession_ = 0;
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> stop_{false};
-    std::thread readThread_;
+    canhw::Thread readThread_;
     bool isOpen_ = false;
 };
 

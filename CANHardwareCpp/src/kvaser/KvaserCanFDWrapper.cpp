@@ -16,7 +16,7 @@ using namespace std::chrono_literals;
 using namespace canlib;
 
 bool KvaserCanFDWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     auto& api = KvaserApi::Instance();
@@ -88,7 +88,7 @@ bool KvaserCanFDWrapper::Open() {
         handle_ = tempHandle;
         isOpen_ = true;
         stop_ = false;
-        readThread_ = std::thread(&KvaserCanFDWrapper::ReadTaskProc, this);
+        readThread_.Start(&KvaserCanFDWrapper::ReadTaskProc, this);
         return true;
     } catch (const std::exception& ex) {
         if (tempHandle >= 0) {
@@ -106,14 +106,14 @@ bool KvaserCanFDWrapper::Open() {
 
 bool KvaserCanFDWrapper::Close() {
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_) return true;
         stop_ = true;
     }
 
-    if (readThread_.joinable()) readThread_.join();
+    readThread_.Join();
 
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     auto& api = KvaserApi::Instance();
     if (handle_ >= 0) {
         try {
@@ -129,12 +129,12 @@ bool KvaserCanFDWrapper::Close() {
 }
 
 void KvaserCanFDWrapper::FlushReceiveBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (handle_ >= 0) KvaserApi::Instance().FlushReceiveQueue(handle_);
 }
 
 void KvaserCanFDWrapper::FlushTransmitBuffer() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (handle_ >= 0) KvaserApi::Instance().FlushTransmitQueue(handle_);
 }
 
@@ -147,15 +147,15 @@ void KvaserCanFDWrapper::ReadTaskProc() {
                 res = Read();
             } while (res && !stop_);
 
-            if (!stop_) std::this_thread::sleep_for(5ms);
+            if (!stop_) canhw::SleepMs(5);
         } catch (...) {
-            if (!stop_) std::this_thread::sleep_for(10ms);
+            if (!stop_) canhw::SleepMs(10);
         }
     }
 }
 
 bool KvaserCanFDWrapper::Read() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || handle_ < 0) return false;
 
     auto& api = KvaserApi::Instance();
@@ -183,7 +183,7 @@ bool KvaserCanFDWrapper::Read() {
 }
 
 bool KvaserCanFDWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || handle_ < 0) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);
@@ -227,7 +227,7 @@ bool KvaserCanFDWrapper::Send(FrameBase& frameBase) {
         st = api.Write(handle_, static_cast<int32_t>(validId), canFrame->data.data(),
                        static_cast<uint32_t>(canFrame->dlc), flag);
         if (st == canOK) break;
-        std::this_thread::sleep_for(50ms);
+        canhw::SleepMs(50);
         ++maxWriteCount;
     }
     if (st != canOK) return false;

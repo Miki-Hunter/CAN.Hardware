@@ -30,7 +30,7 @@ std::string EtasCanWrapper::ResolveUri() {
 }
 
 bool EtasCanWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     auto& api = EtasBoaApi::Instance();
@@ -120,7 +120,7 @@ bool EtasCanWrapper::Open() {
 }
 
 bool EtasCanWrapper::Close() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_) return true;
 
     // 先置关闭标志,阻止在途回调继续推送报文
@@ -247,7 +247,7 @@ bool EtasCanWrapper::Send(FrameBase& frameBase) {
     uint16_t flags = 0;
     bool sent = false;
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_ || txHandle_ == UNDEFINED) return false;
 
         try {

@@ -9,7 +9,7 @@
 // ==================================================================
 #include <atomic>
 #include <cstdint>
-#include <mutex>
+#include <canhw/Sync.h>
 #include <string>
 
 #include <canhw/EbElConfig.h>
@@ -91,6 +91,9 @@ enum FcFlexCardDeviceId : int32_t {
 };
 
 // ---------------- 原生结构(Pack=1,与 .NET 编组一致) ----------------
+// .NET 全部 StructLayout(Pack=1),C++ 必须同样收紧对齐,
+// 否则 fcCANPacket.fcCC/fcPacket.pNextPacket 等偏移与驱动不符
+#pragma pack(push, 1)
 
 /// CAN 报文(22 字节):fcbReceive 链表中 pCANPacket 指向的负载
 struct FcCanPacket {
@@ -169,6 +172,8 @@ struct FcCANCcConfig {
 };
 static_assert(sizeof(FcCANCcConfig) == 36, "fcCANCcConfig layout mismatch");
 
+#pragma pack(pop)
+
 class EbElApi {
 public:
     static EbElApi& Instance();
@@ -202,7 +207,7 @@ private:
 
     DynamicLibrary lib_;
     std::atomic<bool> loaded_{false};
-    std::mutex loadLock_;
+    canhw::Mutex loadLock_;
 
     using GetEnumFlexCardsV3Fn = FcResult CANHW_FC_STDCALL (*)(void**, uint8_t);
     using FreeMemoryFn = FcResult CANHW_FC_STDCALL (*)(int32_t, void*);

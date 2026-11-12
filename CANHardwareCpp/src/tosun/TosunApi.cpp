@@ -10,8 +10,8 @@ namespace tosun {
 
 namespace {
 constexpr size_t kMaxChannels = 32;
-std::mutex& DispatchMutex() {
-    static std::mutex m;
+canhw::Mutex& DispatchMutex() {
+    static canhw::Mutex m;
     return m;
 }
 std::array<TosunDispatch::CanHandler, kMaxChannels>& CanHandlers() {
@@ -25,29 +25,29 @@ std::array<TosunDispatch::CanFdHandler, kMaxChannels>& CanFdHandlers() {
 } // namespace
 
 void TosunDispatch::SetCanHandler(uint8_t channel, CanHandler handler) {
-    std::lock_guard<std::mutex> lock(DispatchMutex());
+    canhw::LockGuard lock(DispatchMutex());
     if (channel < kMaxChannels) CanHandlers()[channel] = std::move(handler);
 }
 
 void TosunDispatch::ClearCanHandler(uint8_t channel) {
-    std::lock_guard<std::mutex> lock(DispatchMutex());
+    canhw::LockGuard lock(DispatchMutex());
     if (channel < kMaxChannels) CanHandlers()[channel] = nullptr;
 }
 
 void TosunDispatch::SetCanFdHandler(uint8_t channel, CanFdHandler handler) {
-    std::lock_guard<std::mutex> lock(DispatchMutex());
+    canhw::LockGuard lock(DispatchMutex());
     if (channel < kMaxChannels) CanFdHandlers()[channel] = std::move(handler);
 }
 
 void TosunDispatch::ClearCanFdHandler(uint8_t channel) {
-    std::lock_guard<std::mutex> lock(DispatchMutex());
+    canhw::LockGuard lock(DispatchMutex());
     if (channel < kMaxChannels) CanFdHandlers()[channel] = nullptr;
 }
 
 void TosunDispatch::DispatchCan(const TLibCan* data) {
     CanHandler handler;
     {
-        std::lock_guard<std::mutex> lock(DispatchMutex());
+        canhw::LockGuard lock(DispatchMutex());
         if (data->idxChn >= kMaxChannels) return;
         handler = CanHandlers()[data->idxChn];
     }
@@ -57,7 +57,7 @@ void TosunDispatch::DispatchCan(const TLibCan* data) {
 void TosunDispatch::DispatchCanFd(const TLibCanFd* data) {
     CanFdHandler handler;
     {
-        std::lock_guard<std::mutex> lock(DispatchMutex());
+        canhw::LockGuard lock(DispatchMutex());
         if (data->idxChn >= kMaxChannels) return;
         handler = CanFdHandlers()[data->idxChn];
     }
@@ -89,7 +89,7 @@ TosunApi& TosunApi::Instance() {
 bool TosunApi::Load() {
     if (loaded_) return true;
 
-    std::lock_guard<std::mutex> lock(initLock_);
+    canhw::LockGuard lock(initLock_);
     if (loaded_) return true;
 
     if (!lib_.Load(DefaultDllPath())) return false;
@@ -149,11 +149,11 @@ uint32_t TosunApi::ConnectDevice(const char* serial, bool enableFIFO,
                                  bool enableErrorFrame, bool enableTurbe,
                                  void** handle) {
     EnsureLoaded();
-    std::lock_guard<std::mutex> lock(deviceLock_);
+    canhw::LockGuard lock(deviceLock_);
 
     // 库级初始化(仅首次真正执行,引用计数)
     {
-        std::lock_guard<std::mutex> initLock(initLock_);
+        canhw::LockGuard initLock(initLock_);
         if (libRefCount_ == 0) pInit_(enableFIFO, enableErrorFrame, enableTurbe);
         ++libRefCount_;
     }
@@ -172,7 +172,7 @@ uint32_t TosunApi::ConnectDevice(const char* serial, bool enableFIFO,
     } else {
         *handle = nullptr;
         // 连接失败:回滚本次库级引用
-        std::lock_guard<std::mutex> initLock(initLock_);
+        canhw::LockGuard initLock(initLock_);
         if (libRefCount_ > 0) {
             --libRefCount_;
             if (libRefCount_ == 0) pFinalize_();
@@ -183,7 +183,7 @@ uint32_t TosunApi::ConnectDevice(const char* serial, bool enableFIFO,
 
 void TosunApi::DisconnectDevice() {
     if (!loaded_) return;
-    std::lock_guard<std::mutex> lock(deviceLock_);
+    canhw::LockGuard lock(deviceLock_);
 
     if (deviceRefCount_ > 0) {
         --deviceRefCount_;
@@ -196,7 +196,7 @@ void TosunApi::DisconnectDevice() {
         }
     }
 
-    std::lock_guard<std::mutex> initLock(initLock_);
+    canhw::LockGuard initLock(initLock_);
     if (libRefCount_ > 0) {
         --libRefCount_;
         if (libRefCount_ == 0) pFinalize_();

@@ -35,7 +35,7 @@ void EnableAllIdRegions(void* handle) {
 } // namespace
 
 bool EsdCanWrapper::Open() {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (isOpen_) return true;
 
     auto& api = EsdApi::Instance();
@@ -83,7 +83,7 @@ bool EsdCanWrapper::Open() {
         handle_ = tempHandle;
         isOpen_ = true;
         stop_ = false;
-        readThread_ = std::thread(&EsdCanWrapper::ReadTaskProc, this);
+        readThread_.Start(&EsdCanWrapper::ReadTaskProc, this);
         return true;
     } catch (const std::exception& ex) {
         // 清理已打开的通道
@@ -101,15 +101,15 @@ bool EsdCanWrapper::Open() {
 
 bool EsdCanWrapper::Close() {
     {
-        std::lock_guard<std::mutex> lock(lock_);
+        canhw::LockGuard lock(lock_);
         if (!isOpen_) return true;
         stop_ = true;
     }
 
     // 在锁外部等待读线程退出(canReadT 最坏 200ms 超时后退出),避免死锁
-    if (readThread_.joinable()) readThread_.join();
+    readThread_.Join();
 
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     void* handle = handle_.load();
     if (handle != nullptr) {
         try {
@@ -136,7 +136,7 @@ void EsdCanWrapper::ReadTaskProc() {
             // canReadT 阻塞至多有帧或 200ms 超时,无需额外延时
             ReadBlocking();
         } catch (...) {
-            if (!stop_) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            if (!stop_) canhw::SleepMs(10);
         }
     }
 }
@@ -174,7 +174,7 @@ void EsdCanWrapper::ReadBlocking() {
 }
 
 bool EsdCanWrapper::Send(FrameBase& frameBase) {
-    std::lock_guard<std::mutex> lock(lock_);
+    canhw::LockGuard lock(lock_);
     if (!isOpen_ || handle_.load() == nullptr) return false;
 
     auto* canFrame = dynamic_cast<CANFrame*>(&frameBase);

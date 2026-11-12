@@ -5,8 +5,8 @@
 //  注册键:Zlg + USBCANFD200U + CANFD 以及 Zlg + USBCANFD200U + CAN
 // ==================================================================
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <canhw/Sync.h>
+#include <canhw/Sync.h>
 #include <vector>
 
 #include <canhw/IHardware.h>
@@ -57,9 +57,9 @@ private:
     TransmitData txCanBuf_{};
     TransmitFdData txFdBuf_{};
 
-    std::mutex lock_;
+    canhw::Mutex lock_;
     std::atomic<bool> stop_{false};
-    std::thread readThread_;
+    canhw::Thread readThread_;
     bool isOpen_ = false;
 };
 

@@ -12,7 +12,7 @@
 // ==================================================================
 #include <atomic>
 #include <cstdint>
-#include <mutex>
+#include <canhw/Sync.h>
 #include <string>
 #include <vector>
 
@@ -298,7 +298,7 @@ private:
     DynamicLibrary boaLib_;
     DynamicLibrary csiLib_;
     std::atomic<bool> loaded_{false};
-    std::mutex loadLock_;
+    canhw::Mutex loadLock_;
 
     using OciCreateControllerVersionFn = EtasErrorCode (*)(const char*, EtasVersion*,
                                                            int32_t*);
