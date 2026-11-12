@@ -6,7 +6,7 @@
 //    canhw_demo zlgfd        ZLG CAN FD 演示(需 USBCANFD-200U)
 //    canhw_demo peak         PEAK 经典 CAN 演示(需 PCAN-USB)
 //    canhw_demo peakfd       PEAK CAN FD 演示(需 FD 设备)
-//    canhw_demo peak2ch      PEAK 双通道互连演示(USBBUS1 与 USBBUS2 互连)
+//    canhw_demo peak2ch      PEAK 双通道互连演示(USBBUS1↔USBBUS2,持续发送10s)
 // ==================================================================
 #include <canhw/Canhw.h>
 
@@ -84,26 +84,33 @@ void DemoPeakTwoChannels() {
     std::cout << "Opening PEAK ch1(0x51) + ch2(0x52) ..." << std::endl;
     hw1->Open();
     hw2->Open();
-    std::cout << "Opened. ch1 sends 0x123, ch2 sends 0x456, listen 2s ..."
-              << std::endl;
+    std::cout << "Opened. streaming10s: ch1->0x123, ch2->0x456 every 200ms "
+                 "(首字节为序号) ..." << std::endl;
 
-    CANFrame frame1;
-    frame1.id = 0x123;
-    frame1.dlc = 8;
-    frame1.data = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};
-    hw1->Send(frame1);
+    // 持续发送 10 秒:每帧首字节为递增序号,便于观察连续流量与丢帧
+    uint8_t counter = 0;
+    const auto start = std::chrono::steady_clock::now();
+    while (std::chrono::steady_clock::now() - start < std::chrono::seconds(10)) {
+        CANFrame frame1;
+        frame1.id = 0x123;
+        frame1.dlc = 8;
+        frame1.data = {counter, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77};
+        hw1->Send(frame1);
 
-    CANFrame frame2;
-    frame2.id = 0x456;
-    frame2.dlc = 8;
-    frame2.data = {0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7};
-    hw2->Send(frame2);
+        CANFrame frame2;
+        frame2.id = 0x456;
+        frame2.dlc = 8;
+        frame2.data = {counter, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6};
+        hw2->Send(frame2);
 
-    canhw::SleepMs(2000);
+        ++counter;
+        canhw::SleepMs(200);
+    }
 
     hw1->Close();
     hw2->Close();
-    std::cout << "Closed." << std::endl;
+    std::cout << "Closed. sent " << static_cast<int>(counter) << " frames per channel."
+              << std::endl;
 }
 
 // 三步走:取实例 → 配参数 → 订阅/收发(与 .NET 版用法一致)
