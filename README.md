@@ -5,9 +5,9 @@
 > **本项目源自 [jsonwu-car/CAN.Hardware](https://github.com/jsonwu-car/CAN.Hardware) 的 .NET 版本,
 > 是它的完整纯 C++ 重写版。**
 >
-> - 原 .NET 工程(12 家厂商、23 个 Wrapper)可在本仓库的历史中找到:
->   `main` 分支 / 提交 `4bdbb83`(: 原 README、`CAN.Hardware/`、`CAN.Hardware.Demo/`)。
-> - 本分支将其**全部替换为纯标准 C++17 实现**,以 .NET 工程为唯一事实来源逐文件移植:
+> - 原 .NET 工程(12 家厂商、23 个 Wrapper)完整保留在 **`original-dotnet` 分支**
+>   (提交 `4bdbb83`,含原 README、`CAN.Hardware/`、`CAN.Hardware.Demo/`)。
+> - 当前 `main` 已将其**全部替换为纯标准 C++17 实现**,以 .NET 工程为唯一事实来源逐文件移植:
 >   注册键 25/25 一一对应、驱动 DLL 路径逐条一致、打开序列/错误文案/DLC 与时间戳换算/过滤器语义
 >   均与原 .NET 版相同。
 > - `HwDependency/` 下的厂商原生驱动 DLL 沿用原 .NET 工程,目录结构保持一致。
